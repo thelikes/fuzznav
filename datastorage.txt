@@ -1,0 +1,6 @@
+
+/index.php : big.txt
+/upload : big.txt
+/upload/index.php : files.txt, big.txt
+/upload/upload.php : big.txt
+/upload/files : directories.txt

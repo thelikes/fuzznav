@@ -11,23 +11,37 @@ import "path"
 
 /*
  * Goal: Print a list of all known endpoints and the wordlist run against them
- * 1. take file as input
+ * 1. Take a list of files from stdin
  * 2. parse the name of the file and collect the wordlist and the target
+ *		... and the extension parameters?
+ *
  *		gobuster-directory-list-2.3-small.txt-https.jss-dev.myseek.xyz.txt
  *		[ type ] [        wordlist          ] [          targ        ]
  *		... what to do about extensions?
  *			if str[] == 'gobuster-ext' {} else {}
- * 3. ...
+ * 3. For all files, store a unique list of endpoints and the wordlist used
+ * 4. Print a unique list of endpoints along with the each wordlist the endpoint was found in
  */
 func main() {
-	// hard code the input file for now
-	input_file_path := "test-data/gobuster-directory-list-2.3-small.txt-https.getpwnd.com.txt"
+	sc := bufio.NewScanner(os.Stdin)
 
-	fmt.Println("input file: ", input_file_path)
+	for sc.Scan() {
+		/*
+			u, err := parseFileName(sc.Text())
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "parse failure %s\n", err)
+				continue
+			}
+		*/
+		parseFileName(sc.Text())
+		readFile(sc.Text())
+	}
+}
 
+func parseFileName(raw string) {
 	// get the file name from the full path
-	filestr := path.Base(input_file_path)
-	println("filestr: ", filestr)
+	filestr := path.Base(raw)
+	fmt.Println("filestr: ", filestr)
 
 	/*
 	 * ditch [0]
@@ -57,6 +71,9 @@ func main() {
 	wordlist = strings.TrimSuffix(wordlist, "-")
 	println("wordlist: ", wordlist)
 
+}
+
+func readFile(input_file_path string) {
 	// open the file and print the contents, line by line
 	file, err := os.Open(input_file_path)
 	// unable to open the file for reading

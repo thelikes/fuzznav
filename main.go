@@ -9,20 +9,6 @@ import "log"
 import "strings"
 import "path"
 
-/*
- * Goal: Print a list of all known endpoints and the wordlist run against them
- * 1. Take a list of files from stdin
- * 2. parse the name of the file and collect the wordlist and the target
- *		... and the extension parameters?
- *
- *		gobuster-directory-list-2.3-small.txt-https.jss-dev.myseek.xyz.txt
- *		[ type ] [        wordlist          ] [          targ        ]
- *		... what to do about extensions?
- *			if str[] == 'gobuster-ext' {} else {}
- * 3. For all files, store a unique list of endpoints and the wordlist used
- * 4. Print a unique list of endpoints along with the each wordlist the endpoint was found in
- */
-
 var endpoint_map = make(map[string][]string)
 
 func main() {

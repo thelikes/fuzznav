@@ -1,8 +1,10 @@
 # fuzznav
 
-Print a list of all known endpoints and the wordlist run against them
+Print a list of all known endpoints and the wordlist run against them.
 
-## Use
+---
+
+### Usage
 
 ***Highly dependent on the filename***
 

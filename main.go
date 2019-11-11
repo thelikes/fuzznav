@@ -1,41 +1,65 @@
 package main
 
-import "fmt"
-import "bufio"
-import "os"
-import "log"
+import (
+	"bufio"
+	"flag"
+	"fmt"
+	"os"
+	"path"
+	"strings"
+)
 
-//import "regexp"
-import "strings"
-import "path"
+type Result struct {
+	Target   string
+	Wordlist string
+	Endpoint string
+	Tool     string
+	Filename string
+}
 
-var endpoint_map = make(map[string][]string)
+var results []Result
 
 func main() {
+	/* Support for modes
+	 * 1. endpoints (ep) - essentially cat; show all endpoints discovered
+	 * 2. targs - show all targeted endpoints and the wordlists used against them
+	 * 3. tree - show tree view of all discovered endpoints
+	 */
+
+	flag.Parse()
+
+	mode := flag.Arg(0)
+
+	// check we have legit mode
+	if mode != "targs" && mode != "ep" && mode != "tree" {
+		fmt.Fprintf(os.Stderr, "unknown mode %s\n", mode)
+		return
+	}
+
+	// read from stdin
 	sc := bufio.NewScanner(os.Stdin)
 	for sc.Scan() {
-		/*
-			u, err := getWordlistName(sc.Text())
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "parse failure %s\n", err)
-				continue
-			}
-		*/
-		wordlist := getWordlistName(sc.Text())
-		//fmt.Print(wordlist, "\n")
-		endpoints := readFile(sc.Text())
-		//fmt.Print(endpoints)
+		fn_str := sc.Text()
 
-		for _, str := range endpoints {
-			addEntry(str, wordlist)
+		// only process existing files (not dirs)
+		if fileExists(fn_str) {
+			//fmt.Println("Found file", fn_str)
+			processFile(fn_str)
 		}
-
-	}
-	for key, value := range endpoint_map {
-		list := prettyList(value)
-		fmt.Println(key, "(", list, ")")
 	}
 
+	fmt.Println(results)
+
+	switch mode {
+	case "targs":
+		fmt.Println("Printing targs")
+	}
+	// identify - identify tool used to generate results
+
+	// parse - parse the file name and/or the file contents
+	// print - print results based on mode
+	//  either iterate through a list of targets and print
+	//  or iterate though targets list and print endpoints
 }
 
 func getWordlistName(raw string) string {
@@ -73,70 +97,32 @@ func getWordlistName(raw string) string {
 	return wordlist
 }
 
-func readFile(input_file_path string) []string {
-	endpoints := []string{}
-	// open the file and print the contents, line by line
-	file, err := os.Open(input_file_path)
-	// unable to open the file for reading
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
+// parse the filename to extract the target and the wordlist
+func processFile(filepath string) bool {
+	var res Result
 
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		urlstr := strings.Split(line, " ")
-		//println("  url: ", urlstr[0])
-		endpoints = append(endpoints, urlstr[0])
-		//fmt.Println("  " + scanner.Text())
-	}
+	res.Filename = path.Base(filepath)
 
-	// no idea what this does
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
+	// ensure we're only going after output files
+	if path.Ext(res.Filename) == ".txt" {
+		fmt.Println("Processing file", res.Filename)
+
+		// parse out the wordlist
+		res.Wordlist = getWordlistName(res.Filename)
+
+		fmt.Println("  Wordlist:", res.Wordlist)
+
+		results = append(results, res)
+
 	}
 
-	return endpoints
+	return true
 }
 
-func addEntry(endpoint, wordlist string) {
-	/*
-	 * Append new wordlist to the entry
-	 */
-
-	slice := endpoint_map[endpoint]
-	if !sliceContains(slice, wordlist) {
-		slice = append(slice, wordlist)
+func fileExists(filepath string) bool {
+	info, err := os.Stat(filepath)
+	if os.IsNotExist(err) {
+		return false
 	}
-
-	endpoint_map[endpoint] = slice
-}
-
-func sliceContains(slice []string, needle string) bool {
-	/*
-	 * Check if a slice contains a value
-	 */
-
-	for _, str := range slice {
-		if str == needle {
-			return true
-		}
-	}
-
-	return false
-}
-
-func prettyList(list []string) string {
-	/* Accept a slice and return a pretty string */
-	var listlist strings.Builder
-
-	for i := 0; i < len(list); i++ {
-		listlist.WriteString(list[i])
-		if i < len(list)-1 {
-			listlist.WriteString(", ")
-		}
-	}
-
-	return listlist.String()
+	return !info.IsDir()
 }

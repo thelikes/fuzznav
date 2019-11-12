@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"log"
+	"net/url"
 	"os"
 	"path"
 	"strings"
@@ -11,11 +13,12 @@ import (
 )
 
 type Result struct {
-	Target   string
-	Wordlist string
-	Endpoint string
-	Tool     string
-	Filename string
+	Target    string
+	Wordlist  string
+	Endpoints []string
+	Tool      string
+	Filepath  string
+	Filename  string
 }
 
 var results []Result
@@ -31,7 +34,7 @@ func main() {
 	mode := flag.Arg(0)
 
 	// check we have legit mode
-	if mode != "targs" && mode != "ep" && mode != "tree" {
+	if mode != "targs" && mode != "eps" && mode != "tree" {
 		fmt.Fprintf(os.Stderr, "unknown mode %s\n", mode)
 		return
 	}
@@ -43,7 +46,6 @@ func main() {
 
 		// only process existing files (not dirs)
 		if fileExists(fn_str) {
-			//fmt.Println("Found file", fn_str)
 			processFile(fn_str)
 		}
 	}
@@ -67,6 +69,15 @@ func main() {
 			fmt.Fprintln(w, str)
 		}
 		w.Flush()
+	case "eps":
+		// get and print a unique list of all endpoints
+		endpoints_slice := processEndpoints()
+		for _, ep := range endpoints_slice {
+			// TODO - print the expanded endpoint
+			fmt.Println(ep)
+		}
+		//  // for res.endpoints
+		//       print unique list of endpoints
 	}
 }
 
@@ -174,10 +185,11 @@ func resultGetTool(filename string) string {
 
 }
 
-// parse the filename to extract the target and the wordlist
+// parse the filename to extract the target, tool, and the wordlist
 func processFile(filepath string) bool {
 	var res Result
 
+	res.Filepath = filepath
 	res.Filename = path.Base(filepath)
 
 	// ensure we're only going after output files
@@ -189,6 +201,7 @@ func processFile(filepath string) bool {
 		res.Tool = resultGetTool(res.Filename)
 
 		// parse out the target
+		// TODO - remove trailing '_'
 		res.Target = resultGetTarget(res.Filename)
 
 		results = append(results, res)
@@ -205,4 +218,82 @@ func fileExists(filepath string) bool {
 	}
 
 	return !info.IsDir()
+}
+
+/* --- mode: eps --- */
+
+// return a unique list of all endpoints
+func processEndpoints() []string {
+	all_eps := []string{}
+
+	// parse each result's endpoints
+	for i := 0; i < len(results); i++ {
+		if results[i].Tool == "ffuf" {
+			continue
+		} else if results[i].Tool == "gobuster" {
+			results[i].Endpoints = readInGobuster(results[i].Filepath)
+			//fmt.Println(results[i].Filepath, results[i].Endpoints)
+		}
+	}
+
+	// iterate through each result and add unseen endpoints
+	for _, res := range results {
+		for _, ep := range res.Endpoints {
+			if !sliceContains(all_eps, ep) {
+				all_eps = append(all_eps, ep)
+			}
+		}
+	}
+
+	return all_eps
+}
+
+// gather all endpoints from a result
+func readInGobuster(in_file string) []string {
+	endpoints := []string{}
+
+	// open the file and print the contents, line by line
+	file, err := os.Open(in_file)
+
+	// unable to open the file for reading
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	// read in the file line by line, append new eps to slice
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		endpoints = append(endpoints, epsParseRaw(strings.Split(line, " ")[0]))
+	}
+
+	// no idea what this does
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+
+	return endpoints
+}
+
+func epsParseRaw(ep_raw string) string {
+	u, err := parseURL(ep_raw)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "parse failure: %s\n", err)
+	}
+
+	return u.Path
+}
+
+func parseURL(raw string) (*url.URL, error) {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return nil, err
+	}
+
+	if u.Scheme == "" {
+		return url.Parse("http://" + raw)
+	}
+
+	return u, nil
 }

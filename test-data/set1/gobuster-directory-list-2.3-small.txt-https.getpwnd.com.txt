@@ -1,3 +1,0 @@
-https://getpwnd.com/images (Status: 302) [Size: 0]
-https://getpwnd.com/register (Status: 302) [Size: 0]
-https://getpwnd.com/upload (Status: 200) [Size: 0]

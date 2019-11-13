@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 )
@@ -17,10 +18,16 @@ import (
 type Result struct {
 	Target    string
 	Wordlist  string
-	Endpoints []string
+	Endpoints []Endpoint
 	Tool      string
 	Filepath  string
 	Filename  string
+}
+
+type Endpoint struct {
+	EP     string
+	Status string
+	Length string
 }
 
 // ffuf structs
@@ -32,7 +39,7 @@ type FfufResult struct {
 	Input    string `json:"input"`
 	Position string `json:"position"`
 	Status   int    `json:"status"`
-	Length   string `json:"length"`
+	Length   int    `json:"length"`
 	Words    string `json:"words"`
 }
 
@@ -90,13 +97,17 @@ func main() {
 		w.Flush()
 	case "eps":
 		// get and print a unique list of all endpoints
-		endpoints_slice := processEndpoints()
-		for _, ep := range endpoints_slice {
+		endpoints := processEndpoints()
+
+		w := new(tabwriter.Writer)
+		w.Init(os.Stdout, 0, 8, 2, '\t', tabwriter.AlignRight)
+		//fmt.Fprintln(w, "Endpoint\tStatus\tSize\t")
+		for _, ep := range endpoints {
 			// TODO - print the expanded endpoint
-			fmt.Println(ep)
+			str := fmt.Sprintf("%s\t(Status: %s)\t(Size: %s)\t", ep.EP, ep.Status, ep.Length)
+			fmt.Fprintln(w, str)
 		}
-		//  // for res.endpoints
-		//       print unique list of endpoints
+		w.Flush()
 	}
 }
 
@@ -250,33 +261,35 @@ func fileExists(filepath string) bool {
 /* --- mode: eps --- */
 
 // return a unique list of all endpoints
-func processEndpoints() []string {
+func processEndpoints() []Endpoint {
 	all_eps := []string{}
+	retEP := []Endpoint{}
 
 	// parse each result's endpoints
 	for i := 0; i < len(results); i++ {
 		if results[i].Tool == "ffuf" {
-			results[i].Endpoints = readInFuff(results[i].Filepath)
+			results[i].Endpoints = readInFfufEndpoints(results[i].Filepath)
 		} else if results[i].Tool == "gobuster" {
-			results[i].Endpoints = readInGobuster(results[i].Filepath)
+			results[i].Endpoints = readInGobusterEndpoints(results[i].Filepath)
 		}
 	}
 
 	// iterate through each result and add unseen endpoints
 	for _, res := range results {
 		for _, ep := range res.Endpoints {
-			if !sliceContains(all_eps, ep) {
-				all_eps = append(all_eps, ep)
+			if !sliceContains(all_eps, ep.EP) {
+				all_eps = append(all_eps, ep.EP)
+				retEP = append(retEP, ep)
 			}
 		}
 	}
 
-	return all_eps
+	return retEP
 }
 
 // gather all endpoints from a result
-func readInGobuster(in_file string) []string {
-	endpoints := []string{}
+func readInGobusterEndpoints(in_file string) []Endpoint {
+	endpoints := []Endpoint{}
 
 	// open the file and print the contents, line by line
 	file, err := os.Open(in_file)
@@ -291,7 +304,14 @@ func readInGobuster(in_file string) []string {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := scanner.Text()
-		endpoints = append(endpoints, epsParseRaw(strings.Split(line, " ")[0]))
+		ep := Endpoint{}
+
+		s := strings.Split(line, " ")
+		ep.EP = epsParseRaw(s[0])
+		ep.Status = strings.Replace(s[2], ")", "", 1)
+		ep.Length = strings.Replace(s[4], "]", "", 1)
+
+		endpoints = append(endpoints, ep)
 	}
 
 	// no idea what this does
@@ -325,8 +345,8 @@ func parseURL(raw string) (*url.URL, error) {
 }
 
 // read json blob file and parse
-func readInFuff(in_file string) []string {
-	endpoints := []string{}
+func readInFfufEndpoints(in_file string) []Endpoint {
+	endpoints := []Endpoint{}
 
 	jsonFile, err := os.Open(in_file)
 
@@ -348,15 +368,19 @@ func readInFuff(in_file string) []string {
 	json.Unmarshal(byteVal, &fCmdLine)
 	target := ffufParseTarget(fCmdLine.CommandLine)
 
+	var ep Endpoint
 	for i := 0; i < len(fResults.Results); i++ {
-		ep := fResults.Results[i].Input
+		ep.EP = fResults.Results[i].Input
 		// if a target was extracted, then manipulate the 'input's
 		if target != "" {
 			// concatenate the target + the input
-			ep = target + ep
+			ep.EP = target + ep.EP
 			// parse the path
-			ep = epsParseRaw(ep)
+			ep.EP = epsParseRaw(ep.EP)
 		}
+
+		ep.Status = strconv.Itoa(fResults.Results[i].Status)
+		ep.Length = strconv.Itoa(fResults.Results[i].Length)
 		//fmt.Println(target, fResults.Results[i].Input, " ", fResults.Results[i].Status)
 		endpoints = append(endpoints, ep)
 	}
@@ -364,6 +388,7 @@ func readInFuff(in_file string) []string {
 	return endpoints
 }
 
+// parse the url/target from the 'commandline' json variable
 func ffufParseTarget(cmd string) string {
 	var t string
 

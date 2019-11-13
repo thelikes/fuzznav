@@ -16,3 +16,9 @@ Print a list of all known endpoints and the wordlist run against them.
 gobuster-directory-list-2.3-small.txt-https.jss-dev.getpwnd.xyz.txt
 [ type ] [        wordlist          ] [          targ        ]
 ```
+
+---
+
+### TODO
+- [ ] add colors to eps mode output
+- [ ] parse the Target from the results

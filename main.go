@@ -2,8 +2,10 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/url"
 	"os"
@@ -19,6 +21,23 @@ type Result struct {
 	Tool      string
 	Filepath  string
 	Filename  string
+}
+
+// ffuf structs
+type FfufResults struct {
+	Results []FfufResult `json:"results"`
+}
+
+type FfufResult struct {
+	Input    string `json:"input"`
+	Position string `json:"position"`
+	Status   int    `json:"status"`
+	Length   string `json:"length"`
+	Words    string `json:"words"`
+}
+
+type FfufCmdLine struct {
+	CommandLine string `json:"commandline"`
 }
 
 var results []Result
@@ -161,6 +180,14 @@ func resultGetTarget(filename string) string {
 	//     ie .com/dir/ becomes dir_.txt
 	slice := strings.Split(filename, "-")
 
+	// In the case of ffuf, the results only contain the position.
+	// So if the target was targ.com/management, then the results
+	// will only contain the discovered file/dir under /management.
+	// As we need the whole thing for targs mode, we need to parse
+	// the actualy target from the json's commandline value. It
+	// would also be more accurate to pull the 'common denominator'
+	// from gobuster, instead of relying on the file's name.
+
 	return slice[len(slice)-1]
 }
 
@@ -229,10 +256,9 @@ func processEndpoints() []string {
 	// parse each result's endpoints
 	for i := 0; i < len(results); i++ {
 		if results[i].Tool == "ffuf" {
-			continue
+			results[i].Endpoints = readInFuff(results[i].Filepath)
 		} else if results[i].Tool == "gobuster" {
 			results[i].Endpoints = readInGobuster(results[i].Filepath)
-			//fmt.Println(results[i].Filepath, results[i].Endpoints)
 		}
 	}
 
@@ -296,4 +322,57 @@ func parseURL(raw string) (*url.URL, error) {
 	}
 
 	return u, nil
+}
+
+// read json blob file and parse
+func readInFuff(in_file string) []string {
+	endpoints := []string{}
+
+	jsonFile, err := os.Open(in_file)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	// do stuff
+	defer jsonFile.Close()
+
+	byteVal, _ := ioutil.ReadAll(jsonFile)
+
+	// extract the results json from ffuf metadata
+	var fResults FfufResults
+	json.Unmarshal(byteVal, &fResults)
+
+	// extract the full target from the ffuf commandline json metadata
+	var fCmdLine FfufCmdLine
+	json.Unmarshal(byteVal, &fCmdLine)
+	target := ffufParseTarget(fCmdLine.CommandLine)
+
+	for i := 0; i < len(fResults.Results); i++ {
+		ep := fResults.Results[i].Input
+		// if a target was extracted, then manipulate the 'input's
+		if target != "" {
+			// concatenate the target + the input
+			ep = target + ep
+			// parse the path
+			ep = epsParseRaw(ep)
+		}
+		//fmt.Println(target, fResults.Results[i].Input, " ", fResults.Results[i].Status)
+		endpoints = append(endpoints, ep)
+	}
+
+	return endpoints
+}
+
+func ffufParseTarget(cmd string) string {
+	var t string
+
+	args := strings.Split(cmd, " ")
+	for _, arg := range args {
+		if strings.Contains(arg, "FUZZ") {
+			t = strings.Replace(arg, "FUZZ", "", 1)
+		}
+	}
+
+	return t
 }

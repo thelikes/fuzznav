@@ -15,6 +15,7 @@ import (
 	"text/tabwriter"
 )
 
+// Config for an output file
 type Result struct {
 	Target    string
 	Wordlist  string
@@ -24,6 +25,7 @@ type Result struct {
 	Filename  string
 }
 
+// Config for an output file's line (x1)
 type Endpoint struct {
 	EP     string
 	Status string
@@ -93,8 +95,12 @@ func processFile(filepath string) {
 
 	// ensure we're only going after output files
 	if path.Ext(res.Filename) == ".txt" {
-		// parse out the wordlist
-		res.Wordlist = resultGetWordlistName(res.Filename)
+		// parse out the wordlist and target
+		//   Note: This is extremely hacky and requires extreme particulars
+		//         in the naming of files. In the case of a ffuf json blob,
+		//         the target can be easily grabbed from the json.commandline
+		//         by searching for a string containing the keyword FUZZ
+		res.Target, res.Wordlist = resultGetWordlistNameAndTarget(res.Filename)
 
 		// parse out the tool
 		res.Tool = resultGetTool(res.Filename)
@@ -115,6 +121,7 @@ func parseFile(res Result) Result {
 
 	return res
 }
+
 func targetsMap() {
 	ep_map := make(map[string][]string)
 
@@ -177,8 +184,6 @@ func targetBuildWordlistList(existing []string, addition string) []string {
 
 // check if a slice contains an entry
 func sliceContains(slice []string, needle string) bool {
-	// Check if a slice contains a value
-
 	for _, str := range slice {
 		if str == needle {
 			return true
@@ -189,7 +194,7 @@ func sliceContains(slice []string, needle string) bool {
 }
 
 // parse the wordlist from the filename
-func resultGetWordlistName(raw string) string {
+func resultGetWordlistNameAndTarget(raw string) (string, string) {
 	// get the file name from the full path
 	filestr := path.Base(raw)
 
@@ -202,43 +207,40 @@ func resultGetWordlistName(raw string) string {
 
 	// extract the wordlist (hacky)
 	wordlist := ""
-	get_wordlist := false
+	got_wordlist := false
+
+	// extract the target (hacky)
+	targ := ""
+	got_targ := false
 
 	// staring from 1 to skip the 'gobuster-' portion of the string
 	for i := 1; i < len(s); i++ {
 		//fmt.Println("slice: ", s[i])
-		if get_wordlist == false {
+		if got_wordlist == false {
 			wordlist += s[i] + "-"
 			// wordlist has to end in '.txt'
 			if strings.Contains(s[i], ".txt") {
 				//println("gotcha")
-				get_wordlist = true
+				got_wordlist = true
+			}
+		} else if got_wordlist && !got_targ {
+			targ += s[i] + "-"
+			if strings.Contains(s[i], ".txt") {
+				//println("gotcha")
+				got_targ = true
 			}
 		}
 	}
 
+	// filename must contain valid chars and the target's HTTP scheme separator,
+	// '://', does not comply. Revert it for output purposes and rm the trailing
+	// '-' added above.
+	targ = strings.Replace(strings.TrimSuffix(targ, ".txt-"), "___", "://", 1)
+
 	// remove the trailing '-'
 	wordlist = strings.TrimSuffix(wordlist, "-")
 
-	return wordlist
-}
-
-// parse the target from the filename
-func resultGetTarget(filename string) string {
-	// extract the target
-	//   caveat: the target ended with a slash
-	//     ie .com/dir/ becomes dir_.txt
-	slice := strings.Split(filename, "-")
-
-	// In the case of ffuf, the results only contain the position.
-	// So if the target was targ.com/management, then the results
-	// will only contain the discovered file/dir under /management.
-	// As we need the whole thing for targs mode, we need to parse
-	// the actualy target from the json's commandline value. It
-	// would also be more accurate to pull the 'common denominator'
-	// from gobuster, instead of relying on the file's name.
-
-	return slice[len(slice)-1]
+	return targ, wordlist
 }
 
 // parse the tool used from the filename
@@ -257,9 +259,7 @@ func resultGetTool(filename string) string {
 		tool = "unkown"
 	}
 
-	// extract the target
 	return tool
-
 }
 
 // check if file exists and is not directory
@@ -338,9 +338,6 @@ func readInGobusterEndpoints(res Result) Result {
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
 	}
-
-	// hack: parse out the target from the filename
-	res.Target = resultGetTarget(res.Filename)
 
 	res.Endpoints = endpoints
 

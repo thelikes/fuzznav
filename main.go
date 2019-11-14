@@ -99,14 +99,22 @@ func processFile(filepath string) {
 		// parse out the tool
 		res.Tool = resultGetTool(res.Filename)
 
-		// parse out the target
-		// TODO - remove trailing '_'
-		res.Target = resultGetTarget(res.Filename)
+		res = parseFile(res)
 
 		results = append(results, res)
 	}
 }
 
+func parseFile(res Result) Result {
+	// parse each result's endpoints
+	if res.Tool == "ffuf" {
+		res = readInFfufEndpoints(res)
+	} else if res.Tool == "gobuster" {
+		res = readInGobusterEndpoints(res)
+	}
+
+	return res
+}
 func targetsMap() {
 	ep_map := make(map[string][]string)
 
@@ -271,15 +279,6 @@ func processEndpoints() []Endpoint {
 	all_eps := []string{}
 	retEP := []Endpoint{}
 
-	// parse each result's endpoints
-	for i := 0; i < len(results); i++ {
-		if results[i].Tool == "ffuf" {
-			results[i].Endpoints = readInFfufEndpoints(results[i].Filepath)
-		} else if results[i].Tool == "gobuster" {
-			results[i].Endpoints = readInGobusterEndpoints(results[i].Filepath)
-		}
-	}
-
 	// iterate through each result and add unseen endpoints
 	for _, res := range results {
 		for _, ep := range res.Endpoints {
@@ -293,9 +292,10 @@ func processEndpoints() []Endpoint {
 	return retEP
 }
 
-// gather all endpoints from a result
-func readInGobusterEndpoints(in_file string) []Endpoint {
+// read file line by line and parse; set Target and Endpoints
+func readInGobusterEndpoints(res Result) Result {
 	endpoints := []Endpoint{}
+	in_file := res.Filepath
 
 	// open the file and print the contents, line by line
 	file, err := os.Open(in_file)
@@ -314,8 +314,22 @@ func readInGobusterEndpoints(in_file string) []Endpoint {
 
 		s := strings.Split(line, " ")
 		ep.EP = epsParseRaw(s[0])
-		ep.Status = strings.Replace(s[2], ")", "", 1)
-		ep.Length = strings.Replace(s[4], "]", "", 1)
+
+		// check to see if the status was logged
+		if len(s) > 1 {
+			ep.Status = strings.Replace(s[2], ")", "", 1)
+		} else {
+			ep.Status = "N/A"
+		}
+
+		// check to see if the status was logged
+		//   TODO use regex to check we're collecting the
+		//   correct value.
+		if len(s) > 3 {
+			ep.Length = strings.Replace(s[4], "]", "", 1)
+		} else {
+			ep.Length = "N/A"
+		}
 
 		endpoints = append(endpoints, ep)
 	}
@@ -325,7 +339,12 @@ func readInGobusterEndpoints(in_file string) []Endpoint {
 		log.Fatal(err)
 	}
 
-	return endpoints
+	// hack: parse out the target from the filename
+	res.Target = resultGetTarget(res.Filename)
+
+	res.Endpoints = endpoints
+
+	return res
 }
 
 func epsParseRaw(ep_raw string) string {
@@ -350,8 +369,9 @@ func parseURL(raw string) (*url.URL, error) {
 	return u, nil
 }
 
-// read json blob file and parse
-func readInFfufEndpoints(in_file string) []Endpoint {
+// read json blob file and parse; set Target and Endpoints
+func readInFfufEndpoints(res Result) Result {
+	in_file := res.Filepath
 	endpoints := []Endpoint{}
 
 	jsonFile, err := os.Open(in_file)
@@ -372,26 +392,29 @@ func readInFfufEndpoints(in_file string) []Endpoint {
 	// extract the full target from the ffuf commandline json metadata
 	var fCmdLine FfufCmdLine
 	json.Unmarshal(byteVal, &fCmdLine)
-	target := ffufParseTarget(fCmdLine.CommandLine)
+	res.Target = ffufParseTarget(fCmdLine.CommandLine)
 
 	var ep Endpoint
+	// iterate of the json.resuls found in the file
 	for i := 0; i < len(fResults.Results); i++ {
 		ep.EP = fResults.Results[i].Input
 		// if a target was extracted, then manipulate the 'input's
-		if target != "" {
+		if res.Target != "" {
 			// concatenate the target + the input
-			ep.EP = target + ep.EP
+			ep.EP = res.Target + ep.EP
 			// parse the path
 			ep.EP = epsParseRaw(ep.EP)
 		}
 
 		ep.Status = strconv.Itoa(fResults.Results[i].Status)
 		ep.Length = strconv.Itoa(fResults.Results[i].Length)
-		//fmt.Println(target, fResults.Results[i].Input, " ", fResults.Results[i].Status)
+		//fmt.Println(res.Target fResults.Results[i].Input, " ", fResults.Results[i].Status)
 		endpoints = append(endpoints, ep)
 	}
 
-	return endpoints
+	res.Endpoints = endpoints
+
+	return res
 }
 
 // parse the url/target from the 'commandline' json variable

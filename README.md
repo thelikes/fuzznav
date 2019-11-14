@@ -22,3 +22,6 @@ gobuster-directory-list-2.3-small.txt-https.jss-dev.getpwnd.xyz.txt
 ### TODO
 - [ ] add colors to eps mode output
 - [ ] parse the Target from the results
+- [ ] add wfuzz support
+- [ ] add ffuf cat
+- [ ] add ability to process multiple targets on input

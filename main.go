@@ -78,37 +78,68 @@ func main() {
 
 	switch mode {
 	case "targs":
-		ep_map := make(map[string][]string)
-
-		// iterate through the results
-		for _, a_res := range results {
-			// append the new wordlist to the existing list of wordlists
-			ep_map[a_res.Target] = targetBuildWordlistList(ep_map[a_res.Target], a_res.Wordlist)
-
-		}
-
-		w := new(tabwriter.Writer)
-		w.Init(os.Stdout, 0, 8, 2, '\t', tabwriter.AlignRight)
-		for key, value := range ep_map {
-			//w.Init(os.Stdout, 5, 0, 1, ' ', tabwriter.AlignRight)
-			str := fmt.Sprintf("%s\t%s\t", key, targetPrettyPrintWordlists(value))
-			fmt.Fprintln(w, str)
-		}
-		w.Flush()
+		targetsMap()
 	case "eps":
-		// get and print a unique list of all endpoints
-		endpoints := processEndpoints()
-
-		w := new(tabwriter.Writer)
-		w.Init(os.Stdout, 0, 8, 2, '\t', tabwriter.AlignRight)
-		//fmt.Fprintln(w, "Endpoint\tStatus\tSize\t")
-		for _, ep := range endpoints {
-			// TODO - print the expanded endpoint
-			str := fmt.Sprintf("%s\t(Status: %s)\t(Size: %s)\t", ep.EP, ep.Status, ep.Length)
-			fmt.Fprintln(w, str)
-		}
-		w.Flush()
+		endpointsMap()
 	}
+}
+
+// parse the filename to extract the target, tool, and the wordlist
+func processFile(filepath string) {
+	var res Result
+
+	res.Filepath = filepath
+	res.Filename = path.Base(filepath)
+
+	// ensure we're only going after output files
+	if path.Ext(res.Filename) == ".txt" {
+		// parse out the wordlist
+		res.Wordlist = resultGetWordlistName(res.Filename)
+
+		// parse out the tool
+		res.Tool = resultGetTool(res.Filename)
+
+		// parse out the target
+		// TODO - remove trailing '_'
+		res.Target = resultGetTarget(res.Filename)
+
+		results = append(results, res)
+	}
+}
+
+func targetsMap() {
+	ep_map := make(map[string][]string)
+
+	// iterate through the results
+	for _, a_res := range results {
+		// append the new wordlist to the existing list of wordlists
+		ep_map[a_res.Target] = targetBuildWordlistList(ep_map[a_res.Target], a_res.Wordlist)
+
+	}
+
+	w := new(tabwriter.Writer)
+	w.Init(os.Stdout, 0, 8, 2, '\t', tabwriter.AlignRight)
+	for key, value := range ep_map {
+		//w.Init(os.Stdout, 5, 0, 1, ' ', tabwriter.AlignRight)
+		str := fmt.Sprintf("%s\t%s\t", key, targetPrettyPrintWordlists(value))
+		fmt.Fprintln(w, str)
+	}
+	w.Flush()
+}
+
+func endpointsMap() {
+	// get and print a unique list of all endpoints
+	endpoints := processEndpoints()
+
+	w := new(tabwriter.Writer)
+	w.Init(os.Stdout, 0, 8, 2, '\t', tabwriter.AlignRight)
+	//fmt.Fprintln(w, "Endpoint\tStatus\tSize\t")
+	for _, ep := range endpoints {
+		// TODO - print the expanded endpoint
+		str := fmt.Sprintf("%s\t(Status: %s)\t[Size: %s]\t", ep.EP, ep.Status, ep.Length)
+		fmt.Fprintln(w, str)
+	}
+	w.Flush()
 }
 
 // nicely print the list of wordlists
@@ -221,31 +252,6 @@ func resultGetTool(filename string) string {
 	// extract the target
 	return tool
 
-}
-
-// parse the filename to extract the target, tool, and the wordlist
-func processFile(filepath string) bool {
-	var res Result
-
-	res.Filepath = filepath
-	res.Filename = path.Base(filepath)
-
-	// ensure we're only going after output files
-	if path.Ext(res.Filename) == ".txt" {
-		// parse out the wordlist
-		res.Wordlist = resultGetWordlistName(res.Filename)
-
-		// parse out the tool
-		res.Tool = resultGetTool(res.Filename)
-
-		// parse out the target
-		// TODO - remove trailing '_'
-		res.Target = resultGetTarget(res.Filename)
-
-		results = append(results, res)
-	}
-
-	return true
 }
 
 // check if file exists and is not directory

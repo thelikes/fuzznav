@@ -38,7 +38,7 @@ type FfufResults struct {
 }
 
 type FfufResult struct {
-	Input    string `json:"input"`
+	URL      string `json:"url"`
 	Position string `json:"position"`
 	Status   int    `json:"status"`
 	Length   int    `json:"length"`
@@ -313,7 +313,8 @@ func readInGobusterEndpoints(res Result) Result {
 		ep := Endpoint{}
 
 		s := strings.Split(line, " ")
-		ep.EP = epsParseRaw(s[0])
+		//ep.EP = epsParseRaw(s[0])
+		ep.EP = s[0]
 
 		// check to see if the status was logged
 		if len(s) > 1 {
@@ -394,18 +395,18 @@ func readInFfufEndpoints(res Result) Result {
 	var ep Endpoint
 	// iterate of the json.resuls found in the file
 	for i := 0; i < len(fResults.Results); i++ {
-		ep.EP = fResults.Results[i].Input
+		ep.EP = fResults.Results[i].URL
 		// if a target was extracted, then manipulate the 'input's
-		if res.Target != "" {
-			// concatenate the target + the input
-			ep.EP = res.Target + ep.EP
-			// parse the path
-			ep.EP = epsParseRaw(ep.EP)
-		}
+		//if res.Target != "" {
+		// concatenate the target + the input
+		//ep.EP = res.Target + ep.EP
+		// parse the path
+		//ep.EP = epsParseRaw(ep.EP)
+		//}
 
 		ep.Status = strconv.Itoa(fResults.Results[i].Status)
 		ep.Length = strconv.Itoa(fResults.Results[i].Length)
-		//fmt.Println(res.Target fResults.Results[i].Input, " ", fResults.Results[i].Status)
+		//fmt.Println(res.Target fResults.Results[i].URL, " ", fResults.Results[i].Status)
 		endpoints = append(endpoints, ep)
 	}
 

@@ -62,7 +62,7 @@ func main() {
 	mode := flag.Arg(0)
 
 	// check we have legit mode
-	if mode != "targs" && mode != "eps" && mode != "tree" {
+	if mode != "targs" && mode != "t" && mode != "eps" && mode != "e" {
 		fmt.Fprintf(os.Stderr, "unknown mode %s\n", mode)
 		return
 	}
@@ -81,7 +81,11 @@ func main() {
 	switch mode {
 	case "targs":
 		targetsMap()
+	case "t":
+		targetsMap()
 	case "eps":
+		endpointsMap()
+	case "e":
 		endpointsMap()
 	}
 }

@@ -11,17 +11,11 @@ import (
 // global debug mode used with env variable
 var debugmode bool
 
-type FfufCmdLine struct {
-	CommandLine string `json:"commandline"`
-}
-
-type FfufTime struct {
-	Time string `json:"time"`
-}
-
-//
-type FfufConfig struct {
-	Config FfufMetaData `json:"config"`
+type FfufOutput struct {
+	CommandLine string       `json:"commandline"`
+	Time        string       `json:"time"`
+	Config      FfufMetaData `json:"config"`
+	Results     []FfufResult `json:"results"`
 }
 
 type FfufInputProviders struct {
@@ -32,16 +26,10 @@ type FfufInputProviders struct {
 
 // ffuf json 'commandline' struct
 type FfufMetaData struct {
-	URL        string `json:"url"`
-	Method     string `json:"method"`
-	Outputfile string `json:"outputfile"`
-	//Time    string `json:"time"`
+	URL            string               `json:"url"`
+	Method         string               `json:"method"`
+	Outputfile     string               `json:"outputfile"`
 	InputProviders []FfufInputProviders `json:"inputproviders"`
-}
-
-// Array of ffuf {"results":..}
-type FfufResults struct {
-	Results []FfufResult `json:"results"`
 }
 
 // ffuf json 'results' struct - status, size, words, lines
@@ -54,6 +42,14 @@ type FfufResult struct {
 	Lines    int    `json:"lines"`
 	Host     string `json:"host"`
 	URL      string `json:"url"`
+}
+
+type NavEndpoints struct {
+	Endpoint string
+	Status   int
+	Length   int
+	Words    int
+	Lines    int
 }
 
 func main() {
@@ -102,38 +98,39 @@ func processFile(filepath string) []byte {
 }
 
 // collect values
-func parseResults(byteVal []byte) {
-	var commandline FfufCmdLine
-	json.Unmarshal(byteVal, &commandline)
+func parseResults(byteVal []byte) NavEndpoints {
+	var endpoints NavEndpoints
 
-	var time FfufTime
-	json.Unmarshal(byteVal, &time)
-
-	var metadata FfufConfig
-	json.Unmarshal(byteVal, &metadata)
-
-	var results FfufResults
-	json.Unmarshal(byteVal, &results)
+	var output FfufOutput
+	json.Unmarshal(byteVal, &output)
 
 	if debugmode {
-		fmt.Printf("[debug] command line: %v\n", commandline.CommandLine)
-		fmt.Printf("[debug] target: %v\n", metadata.Config.URL)
-		fmt.Printf("[debug] method: %v\n", metadata.Config.Method)
-		fmt.Printf("[debug] wordlist: %v\n", metadata.Config.InputProviders[0].Value)
-		fmt.Printf("[debug] outputfile: %v\n", metadata.Config.Outputfile)
-		fmt.Printf("[debug] time: %v\n", time.Time)
-		fmt.Printf("[debug] url: %v\n", results.Results[0].URL)
+		fmt.Printf("[debug] command line: %v\n", output.CommandLine)
+		fmt.Printf("[debug] target: %v\n", output.Config.URL)
+		fmt.Printf("[debug] method: %v\n", output.Config.Method)
+		fmt.Printf("[debug] wordlist: %v\n", output.Config.InputProviders[0].Value)
+		fmt.Printf("[debug] outputfile: %v\n", output.Config.Outputfile)
+		fmt.Printf("[debug] time: %v\n", output.Time)
+		fmt.Printf("[debug] url: %v\n", output.Results[0].URL)
 	}
 
-	fmt.Printf("%v %v %v %v %v\n", results.Results[0].URL, results.Results[0].Status, results.Results[0].Length, results.Results[0].Words, results.Results[0].Lines)
+	endpoints.Endpoint = output.Results[0].URL
+	endpoints.Status = output.Results[0].Status
+	endpoints.Length = output.Results[0].Length
+	endpoints.Words = output.Results[0].Words
+	endpoints.Lines = output.Results[0].Lines
 
+	if debugmode {
+		fmt.Printf("%v [Status: %v, Size: %v, Words: %v, Lines: %v]\n", endpoints.Endpoint, endpoints.Status, endpoints.Length, endpoints.Words, endpoints.Lines)
+	}
+
+	return endpoints
 }
 
 // set debug mode
 func setDebugMode() {
 	debug_str := os.Getenv("DEBUG")
 
-	fmt.Printf("mode=%v\n", debug_str)
 	if debug_str == "true" {
 		fmt.Println("[*] Debug mode set to true.")
 		debugmode = true

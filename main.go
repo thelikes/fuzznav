@@ -3,11 +3,13 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/fatih/color"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/tabwriter"
 )
 
@@ -74,6 +76,9 @@ func main() {
 	// proces debug mode
 	setDebugMode()
 
+	// command line args
+	flag.Parse()
+
 	// slice to store slices of NavResults
 	var results [][]NavResults
 
@@ -92,8 +97,12 @@ func main() {
 		}
 	}
 
-	//endpointsMap(results)
-	targetsMap(results)
+	// print discovered endpoints or fuzzed targets
+	if strings.HasPrefix(flag.Arg(0), "t") {
+		targetsMap(results)
+	} else {
+		endpointsMap(results)
+	}
 }
 
 /*

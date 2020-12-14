@@ -55,13 +55,14 @@ type FfufResult struct {
  */
 
 type NavResults struct {
-	Endpoint string
-	Status   int
-	Length   int
-	Words    int
-	Lines    int
-	URL      string
-	Wordlist string
+	Endpoint   string
+	Status     int
+	Length     int
+	Words      int
+	Lines      int
+	URL        string
+	Wordlist   string
+	Outputfile string
 }
 
 /*
@@ -90,8 +91,8 @@ func main() {
 		}
 	}
 
-	//endpointsMap(results)
-	targetsMap(results)
+	endpointsMap(results)
+	//targetsMap(results)
 }
 
 /*
@@ -119,21 +120,27 @@ func parseResults(byteVal []byte) []NavResults {
 		fmt.Printf("[debug] url: %v\n", output.Results[0].URL)
 	}
 
-	for i := 0; i < len(output.Results); i++ {
-		navResults.Endpoint = output.Results[i].URL
-		navResults.Status = output.Results[i].Status
-		navResults.Length = output.Results[i].Length
-		navResults.Words = output.Results[i].Words
-		navResults.Lines = output.Results[i].Lines
-		navResults.URL = output.Config.URL
-		navResults.Wordlist = output.Config.InputProviders[0].Value
+	navResults.URL = output.Config.URL
+	navResults.Outputfile = output.Config.Outputfile
+	navResults.Wordlist = output.Config.InputProviders[0].Value
 
-		if DEBUGMODE {
-			fmt.Printf("%v [Status: %v, Size: %v, Words: %v, Lines: %v]\n", navResults.Endpoint, navResults.Status, navResults.Length, navResults.Words, navResults.Lines)
-		}
-
+	if len(output.Results) == 0 {
+		// handle storage of metadata for output file with no results
 		navResultsSlice = append(navResultsSlice, navResults)
+	} else {
+		for i := 0; i < len(output.Results); i++ {
+			navResults.Endpoint = output.Results[i].URL
+			navResults.Status = output.Results[i].Status
+			navResults.Length = output.Results[i].Length
+			navResults.Words = output.Results[i].Words
+			navResults.Lines = output.Results[i].Lines
 
+			if DEBUGMODE {
+				fmt.Printf("%v [Status: %v, Size: %v, Words: %v, Lines: %v]\n", navResults.Endpoint, navResults.Status, navResults.Length, navResults.Words, navResults.Lines)
+			}
+
+			navResultsSlice = append(navResultsSlice, navResults)
+		}
 	}
 
 	return navResultsSlice
@@ -184,10 +191,15 @@ func processEndpoints(results [][]NavResults) []NavResults {
 	for _, res := range results {
 		// for each result in results
 		for _, ep := range res {
-			// only store an endpoint if not already stored
-			if !sliceContains(allEndpoints, ep.Endpoint) {
-				allEndpoints = append(allEndpoints, ep.Endpoint)
-				cleanResults = append(cleanResults, ep)
+			//fmt.Printf("endpoint (%v): %v\n", ep.Outputfile, ep.Endpoint)
+			// only process if endpoint is not null (no results)
+			if len(ep.Endpoint) != 0 {
+				//fmt.Printf("No endpoint found (%v)\n", ep.Outputfile)
+				// only store an endpoint if not already stored
+				if !sliceContains(allEndpoints, ep.Endpoint) {
+					allEndpoints = append(allEndpoints, ep.Endpoint)
+					cleanResults = append(cleanResults, ep)
+				}
 			}
 		}
 	}

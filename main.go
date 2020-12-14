@@ -11,7 +11,11 @@ import (
 )
 
 // global debug mode used with env variable
-var debugmode bool
+var DEBUGMODE bool
+
+/*
+ * Ffuf JSON Structs
+ */
 
 type FfufOutput struct {
 	CommandLine string       `json:"commandline"`
@@ -46,25 +50,35 @@ type FfufResult struct {
 	URL      string `json:"url"`
 }
 
-type NavEndpoints struct {
+/*
+ * FuzzNav Structs
+ */
+
+type NavResults struct {
 	Endpoint string
 	Status   int
 	Length   int
 	Words    int
 	Lines    int
+	URL      string
+	Wordlist string
 }
+
+/*
+ * Main
+ */
 
 func main() {
 	// proces debug mode
 	setDebugMode()
 
-	// slice to store slices of NavEndpoints
-	var results [][]NavEndpoints
+	// slice to store slices of NavResults
+	var results [][]NavResults
 
 	// read and parse each filename from stdin
 	sc := bufio.NewScanner(os.Stdin)
 	for sc.Scan() {
-		if debugmode {
+		if DEBUGMODE {
 			fmt.Printf("[debug] filename: %v\n", sc.Text())
 		}
 		fn_str := sc.Text()
@@ -73,47 +87,29 @@ func main() {
 		if fileExists(fn_str) {
 			byteVal := processFile(fn_str)
 			results = append(results, parseResults(byteVal))
-			//fmt.Printf("len(results) = %v\n", len(results))
 		}
 	}
 
-	endpointsMap(results)
+	//endpointsMap(results)
+	targetsMap(results)
 }
 
-// check if file exists and is not directory
-func fileExists(filepath string) bool {
-	info, err := os.Stat(filepath)
-	if os.IsNotExist(err) {
-		return false
-	}
+/*
+ * Accept JSON byte stream as input, parse and extract desired values.
+ * Returns slice of one or more Ffuf result objects and additional metadata.
+ *
+ * Note: Lazy sotring metadata for each Ffuf result (ie discovered endpoint), though may have
+ *   some benefits. Good place to start for performance optimization.
+ */
 
-	return !info.IsDir()
-}
-
-// ingest json to byte array
-func processFile(filepath string) []byte {
-	// read file
-	jsonFile, err := os.Open(filepath)
-
-	if err != nil {
-		fmt.Println(err)
-	}
-	byteVal, _ := ioutil.ReadAll(jsonFile)
-
-	defer jsonFile.Close()
-
-	return byteVal
-}
-
-// collect values
-func parseResults(byteVal []byte) []NavEndpoints {
-	var endpoints NavEndpoints
-	var endpointResults []NavEndpoints
+func parseResults(byteVal []byte) []NavResults {
+	var navResults NavResults
+	var navResultsSlice []NavResults
 
 	var output FfufOutput
 	json.Unmarshal(byteVal, &output)
 
-	if debugmode {
+	if DEBUGMODE {
 		fmt.Printf("[debug] command line: %v\n", output.CommandLine)
 		fmt.Printf("[debug] target: %v\n", output.Config.URL)
 		fmt.Printf("[debug] method: %v\n", output.Config.Method)
@@ -123,27 +119,32 @@ func parseResults(byteVal []byte) []NavEndpoints {
 		fmt.Printf("[debug] url: %v\n", output.Results[0].URL)
 	}
 
-	//fmt.Printf("len: %v\n", len(output.Results))
 	for i := 0; i < len(output.Results); i++ {
-		endpoints.Endpoint = output.Results[i].URL
-		endpoints.Status = output.Results[i].Status
-		endpoints.Length = output.Results[i].Length
-		endpoints.Words = output.Results[i].Words
-		endpoints.Lines = output.Results[i].Lines
+		navResults.Endpoint = output.Results[i].URL
+		navResults.Status = output.Results[i].Status
+		navResults.Length = output.Results[i].Length
+		navResults.Words = output.Results[i].Words
+		navResults.Lines = output.Results[i].Lines
+		navResults.URL = output.Config.URL
+		navResults.Wordlist = output.Config.InputProviders[0].Value
 
-		if debugmode {
-			fmt.Printf("%v [Status: %v, Size: %v, Words: %v, Lines: %v]\n", endpoints.Endpoint, endpoints.Status, endpoints.Length, endpoints.Words, endpoints.Lines)
+		if DEBUGMODE {
+			fmt.Printf("%v [Status: %v, Size: %v, Words: %v, Lines: %v]\n", navResults.Endpoint, navResults.Status, navResults.Length, navResults.Words, navResults.Lines)
 		}
 
-		endpointResults = append(endpointResults, endpoints)
+		navResultsSlice = append(navResultsSlice, navResults)
 
 	}
 
-	return endpointResults
+	return navResultsSlice
 }
 
+/*
+ * Endpoint Processing Functions =====
+ */
+
 // print map of endpoints
-func endpointsMap(results [][]NavEndpoints) {
+func endpointsMap(results [][]NavResults) {
 	endpoints := processEndpoints(results)
 	red := color.New(color.FgRed).SprintFunc()
 	blue := color.New(color.FgBlue).SprintFunc()
@@ -175,9 +176,9 @@ func endpointsMap(results [][]NavEndpoints) {
 }
 
 // return a unique list of all endpoints
-func processEndpoints(results [][]NavEndpoints) []NavEndpoints {
+func processEndpoints(results [][]NavResults) []NavResults {
 	var allEndpoints []string
-	var cleanResults []NavEndpoints
+	var cleanResults []NavResults
 
 	// for each slice in results
 	for _, res := range results {
@@ -192,6 +193,48 @@ func processEndpoints(results [][]NavEndpoints) []NavEndpoints {
 	}
 
 	return cleanResults
+}
+
+/*
+ * Target Processing Functions =====
+ */
+
+func targetsMap(results [][]NavResults) {
+	for _, res := range results {
+		// for each result in results
+		for _, aRes := range res {
+			fmt.Printf("%v\n", aRes.URL)
+		}
+	}
+}
+
+/*
+ * Utility Functions =====
+ */
+
+// check if file exists and is not directory
+func fileExists(filepath string) bool {
+	info, err := os.Stat(filepath)
+	if os.IsNotExist(err) {
+		return false
+	}
+
+	return !info.IsDir()
+}
+
+// ingest json to byte array
+func processFile(filepath string) []byte {
+	// read file
+	jsonFile, err := os.Open(filepath)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+	byteVal, _ := ioutil.ReadAll(jsonFile)
+
+	defer jsonFile.Close()
+
+	return byteVal
 }
 
 // check if a slice contains an entry
@@ -226,8 +269,8 @@ func setDebugMode() {
 
 	if debug_str == "true" {
 		fmt.Println("[*] Debug mode set to true.")
-		debugmode = true
+		DEBUGMODE = true
 	} else {
-		debugmode = false
+		DEBUGMODE = false
 	}
 }

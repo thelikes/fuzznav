@@ -146,11 +146,27 @@ func parseResults(byteVal []byte) []NavEndpoints {
 func endpointsMap(results [][]NavEndpoints) {
 	endpoints := processEndpoints(results)
 	red := color.New(color.FgRed).SprintFunc()
+	blue := color.New(color.FgBlue).SprintFunc()
+	green := color.New(color.FgGreen).SprintFunc()
+	yellow := color.New(color.FgYellow).SprintFunc()
+
+	var str string
 
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 8, 2, '\t', tabwriter.AlignRight)
 	for _, ep := range endpoints {
-		str := fmt.Sprintf("%v\t[Status: %v, Size: %v, Words: %v, Lines: %v]\t", ep.Endpoint, red(ep.Status), ep.Length, ep.Words, ep.Lines)
+		switch {
+		case ep.Status >= 200 && ep.Status <= 299:
+			str = fmt.Sprintf("%v\t[Status: %v, Size: %v, Words: %v, Lines: %v]\t", ep.Endpoint, green(ep.Status), ep.Length, ep.Words, ep.Lines)
+		case ep.Status >= 300 && ep.Status <= 399:
+			str = fmt.Sprintf("%v\t[Status: %v, Size: %v, Words: %v, Lines: %v]\t", ep.Endpoint, blue(ep.Status), ep.Length, ep.Words, ep.Lines)
+		case ep.Status >= 400 && ep.Status <= 499:
+			str = fmt.Sprintf("%v\t[Status: %v, Size: %v, Words: %v, Lines: %v]\t", ep.Endpoint, yellow(ep.Status), ep.Length, ep.Words, ep.Lines)
+		case ep.Status >= 500 && ep.Status <= 599:
+			str = fmt.Sprintf("%v\t[Status: %v, Size: %v, Words: %v, Lines: %v]\t", ep.Endpoint, red(ep.Status), ep.Length, ep.Words, ep.Lines)
+		default:
+			str = fmt.Sprintf("%v\t[Status: %v, Size: %v, Words: %v, Lines: %v]\t", ep.Endpoint, ep.Status, ep.Length, ep.Words, ep.Lines)
+		}
 
 		fmt.Fprintln(w, str)
 	}

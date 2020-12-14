@@ -7,6 +7,7 @@ import (
 	"github.com/fatih/color"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"text/tabwriter"
 )
 
@@ -91,8 +92,8 @@ func main() {
 		}
 	}
 
-	endpointsMap(results)
-	//targetsMap(results)
+	//endpointsMap(results)
+	targetsMap(results)
 }
 
 /*
@@ -152,11 +153,12 @@ func parseResults(byteVal []byte) []NavResults {
 
 // print map of endpoints
 func endpointsMap(results [][]NavResults) {
-	endpoints := processEndpoints(results)
 	red := color.New(color.FgRed).SprintFunc()
 	blue := color.New(color.FgBlue).SprintFunc()
 	green := color.New(color.FgGreen).SprintFunc()
 	yellow := color.New(color.FgYellow).SprintFunc()
+
+	endpoints := processEndpoints(results)
 
 	var str string
 
@@ -191,10 +193,8 @@ func processEndpoints(results [][]NavResults) []NavResults {
 	for _, res := range results {
 		// for each result in results
 		for _, ep := range res {
-			//fmt.Printf("endpoint (%v): %v\n", ep.Outputfile, ep.Endpoint)
 			// only process if endpoint is not null (no results)
 			if len(ep.Endpoint) != 0 {
-				//fmt.Printf("No endpoint found (%v)\n", ep.Outputfile)
 				// only store an endpoint if not already stored
 				if !sliceContains(allEndpoints, ep.Endpoint) {
 					allEndpoints = append(allEndpoints, ep.Endpoint)
@@ -211,37 +211,47 @@ func processEndpoints(results [][]NavResults) []NavResults {
  * Target Processing Functions =====
  */
 
+// print unique list of target alongside unique list of wordlists
 func targetsMap(results [][]NavResults) {
-	targetResults := processTargets(results)
+	targetMap := make(map[string][]string)
 
-	var str string
+	for _, res := range results {
+		for _, aRes := range res {
+			targetMap[aRes.URL] = targetBuildWordlistList(targetMap[aRes.URL], filepath.Base(aRes.Wordlist))
+		}
+	}
 
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 8, 2, '\t', tabwriter.AlignRight)
-	for _, target := range targetResults {
-		str = fmt.Sprintf("%v\t", target.URL)
+	for key, value := range targetMap {
+		str := fmt.Sprintf("%s\t%s\t", key, targetPrettyPrintWordlists(value))
 		fmt.Fprintln(w, str)
 	}
 	w.Flush()
 }
 
-func processTargets(results [][]NavResults) []NavResults {
-	var allTargets []string
-	var cleanResults []NavResults
+// only add the wordlist if not already present
+func targetBuildWordlistList(existing []string, addition string) []string {
+	if !sliceContains(existing, addition) {
+		existing = append(existing, addition)
+	}
 
-	// for each slice in results
-	for _, res := range results {
-		// for each result in results
-		for _, aRes := range res {
-			// only store an endpoint if not already stored
-			if !sliceContains(allTargets, aRes.URL) {
-				allTargets = append(allTargets, aRes.URL)
-				cleanResults = append(cleanResults, aRes)
-			}
+	return existing
+}
+
+// nicely print the list of wordlists
+func targetPrettyPrintWordlists(list []string) string {
+	ret := ""
+
+	for i := 0; i < len(list); i++ {
+		if i == len(list)-1 {
+			ret += list[i]
+		} else {
+			ret = ret + list[i] + ","
 		}
 	}
 
-	return cleanResults
+	return ret
 }
 
 /*
@@ -282,21 +292,6 @@ func sliceContains(slice []string, needle string) bool {
 	}
 
 	return false
-}
-
-// nicely print the list of wordlists
-func targetPrettyPrintWordlists(list []string) string {
-	ret := ""
-
-	for i := 0; i < len(list); i++ {
-		if i == len(list)-1 {
-			ret += list[i]
-		} else {
-			ret = ret + list[i] + ","
-		}
-	}
-
-	return ret
 }
 
 // set debug mode

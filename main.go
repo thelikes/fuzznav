@@ -24,11 +24,19 @@ type FfufConfig struct {
 	Config FfufMetaData `json:"config"`
 }
 
+type FfufInputProviders struct {
+	Keyword string `json:"keyword"`
+	Name    string `json:"name"`
+	Value   string `json:"value"`
+}
+
 // ffuf json 'commandline' struct
 type FfufMetaData struct {
-	URL    string `json:"url"`
-	Method string `json:"method"`
+	URL        string `json:"url"`
+	Method     string `json:"method"`
+	Outputfile string `json:"outputfile"`
 	//Time    string `json:"time"`
+	InputProviders []FfufInputProviders `json:"inputproviders"`
 }
 
 // Array of ffuf {"results":..}
@@ -111,6 +119,8 @@ func parseResults(byteVal []byte) {
 		fmt.Printf("[debug] command line: %v\n", commandline.CommandLine)
 		fmt.Printf("[debug] target: %v\n", metadata.Config.URL)
 		fmt.Printf("[debug] method: %v\n", metadata.Config.Method)
+		fmt.Printf("[debug] wordlist: %v\n", metadata.Config.InputProviders[0].Value)
+		fmt.Printf("[debug] outputfile: %v\n", metadata.Config.Outputfile)
 		fmt.Printf("[debug] time: %v\n", time.Time)
 		fmt.Printf("[debug] url: %v\n", results.Results[0].URL)
 	}

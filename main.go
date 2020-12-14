@@ -200,12 +200,36 @@ func processEndpoints(results [][]NavResults) []NavResults {
  */
 
 func targetsMap(results [][]NavResults) {
+	targetResults := processTargets(results)
+
+	var str string
+
+	w := new(tabwriter.Writer)
+	w.Init(os.Stdout, 0, 8, 2, '\t', tabwriter.AlignRight)
+	for _, target := range targetResults {
+		str = fmt.Sprintf("%v\t", target.URL)
+		fmt.Fprintln(w, str)
+	}
+	w.Flush()
+}
+
+func processTargets(results [][]NavResults) []NavResults {
+	var allTargets []string
+	var cleanResults []NavResults
+
+	// for each slice in results
 	for _, res := range results {
 		// for each result in results
 		for _, aRes := range res {
-			fmt.Printf("%v\n", aRes.URL)
+			// only store an endpoint if not already stored
+			if !sliceContains(allTargets, aRes.URL) {
+				allTargets = append(allTargets, aRes.URL)
+				cleanResults = append(cleanResults, aRes)
+			}
 		}
 	}
+
+	return cleanResults
 }
 
 /*

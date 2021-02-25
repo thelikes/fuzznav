@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"fuzznav/util"
 	"github.com/spf13/cobra"
 )
@@ -14,7 +12,6 @@ var endpointsCmd = &cobra.Command{
 	Short:   "Show discovered endpoints",
 	Long:    `Show discovered endpoints, status, size, words, and lines.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("[+] endpoints called")
 		util.EndpointsMap(util.ReadStdinAndParse())
 	},
 }

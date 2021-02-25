@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"fuzznav/util"
 	"github.com/spf13/cobra"
 )
@@ -14,7 +12,6 @@ var targetsCmd = &cobra.Command{
 	Short:   "Show fuzz targets",
 	Long:    `Show fuzz targets and wordlists used to fuzz the target.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("targets called")
 		util.TargetsMap(util.ReadStdinAndParse())
 	},
 }

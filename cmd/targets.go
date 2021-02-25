@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"github.com/fuzznav/util"
 	"github.com/spf13/cobra"
+	"github.com/thelikes/fuzznav/util"
 )
 
 // targetsCmd represents the targets command

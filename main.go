@@ -3,7 +3,7 @@
  */
 package main
 
-import "fuzznav/cmd"
+import "github.com/thelikes/fuzznav/cmd"
 
 func main() {
 	cmd.Execute()

@@ -1,4 +1,4 @@
-module fuzznav
+module github.com/thelikes/fuzznav
 
 go 1.13
 

@@ -11,7 +11,7 @@ A utility for parsing and visualizing the web server endpoints discovered with f
 ## Install
 
 ```
-$ GO111MODULE=on go -v get github.com/thelikes/fuzznav
+$ GO111MODULE=on go get -u -v github.com/thelikes/fuzznav
 ```
 
 ## Run
@@ -55,7 +55,7 @@ http://example.com/FUZZ                   common.txt,raft-small-files.txt
 ```
 
 ## Background
-This tool's aim is to aid in the mapping of fuzzing efforts. Instead of keeping a mental representation of what endpoints were fuzzed with what wordlists, this tool will make it easy to visualize where a server has been fuzzed and with what. Additionally, as ffuf (helpfully) stores a lot of data about discovered results and scanning in general, it can be combersome to get just what you need from the resulting json - fuzznav makes it simple to extract and parse. 
+This tool's aim is to aid in the mapping of fuzzing efforts. Instead of keeping a mental representation of what endpoints were fuzzed with what wordlists, this tool will make it easy to visualize where a server has been fuzzed and with what. Additionally, as ffuf (helpfully) stores a lot of data about discovered results and scanning in general, it can be cumbersome to get just what you need from the resulting json - fuzznav makes it simple to extract and parse. 
 
 ## To Do
 

@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"fuzznav/util"
+	"github.com/fuzznav/util"
 	"github.com/spf13/cobra"
 )
 

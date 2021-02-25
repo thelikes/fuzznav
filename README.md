@@ -1,14 +1,27 @@
 # fuzznav
 
-A utility for visualizing the web server endpoints discovered with ffuf and the wordlists used against each target.
+A utility for parsing and visualizing the web server endpoints discovered with ffuf and the wordlists used against each target.
+
+## Features
+* Parse many, many ffuf files at once
+* Show target FUZZ endpoints
+* Show discovered endpoints
+* Pretty print - full URIs, color, status, size, words, & lines
 
 ## Install
 
 ```
-$ go get github.com/thelikes/fuzznav
+$ GO111MODULE=on go -v get github.com/thelikes/fuzznav
 ```
 
 ## Run
+
+Use shell commands (`find`, `ls`, etc) to list ffuf JSON files and pipe the
+output to `fuzznav`. Throw `e` or `t` for endpoints and targets, respectively. 
+
+**TIP** Use the firefox addon [Open Multiple
+URLs](https://addons.mozilla.org/en-US/firefox/addon/open-multiple-urls/), or
+similar, to pop a list of results into the browser quickly.
 
 ### Basics
 
@@ -47,7 +60,7 @@ This tool's aim is to aid in the mapping of fuzzing efforts. Instead of keeping 
 ## To Do
 
 ### General
-- [ ] integreate [cobra](https://github.com/spf13/cobra)
+- [x] integreate [cobra](https://github.com/spf13/cobra)
 
 ### Endpoints
 - [x] color
@@ -71,3 +84,7 @@ This tool's aim is to aid in the mapping of fuzzing efforts. Instead of keeping 
 - [ ] no. of sessions (ffuf provide?)
 - [ ] scanning time (ffuf provide?)
 - [ ] endpoints discovered
+
+
+## Thanks
+Special thanks to [joohoi](https://twitter.com/joohoi) for such an amazing tool.
